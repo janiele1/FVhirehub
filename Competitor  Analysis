@@ -1,0 +1,62 @@
+One-Way Interview App Research & Feature Recommendations
+Executive Summary
+The one-way (asynchronous) interview market ranges from simple, speed-focused tools to complex enterprise AI platforms. For a new internal app, the "sweet spot" appears to be simplicity and candidate experience (like Willo/Hireflix) rather than heavy enterprise compliance (HireVue).
+
+Top Competitors Analysis
+Competitor	Target Audience	Key Differentiators	Weaknesses
+Willo	SMB to Enterprise	No candidate login required, extremely simple UI, mobile-first.	Less "heavy" on complex workflow automation compared to enterprise tools.
+Spark Hire	Mid-Market	Strong branding, collaborative rating stars, good balance of features.	Can be pricier; slightly more friction than Willo.
+HireVue	Enterprise	Heavy AI scoring ("employability" score), game-based assessments.	Expensive, complex setup, "Big Brother" vibe can alienate candidates.
+Hireflix	SMB / Startups	"Ridiculously simple", focus on speed and ease of use.	Limited advanced features (reporting, deep integrations).
+Feature Breakdown by Competitor
+1. Willo (The Usability Winner)
+Feature: "No account needed" for candidates. They click a link and record.
+Feature: Works perfectly on mobile browsers without an app.
+Feature: "Retake" limits (allow candidates to retake 0, 3, or unlimited times).
+Feature: ID Verification (optional snapshot of ID).
+2. Spark Hire (The Standard)
+Feature: "Think time" vs "Answer time" settings.
+Feature: Intro/Outro videos recorded by the recruiter to personalize the experience.
+Feature: Star ratings and collaborative commenting for hiring managers.
+3. HireVue (The AI Giant)
+Feature: AI analysis of facial expressions and tone (Controversial but powerful for volume).
+Feature: Structured interview builder to ensure fairness/compliance.
+Recommended Feature Set for Your App
+Based on the goal of building a "simple yet professional app quickly", I recommend modeling the core experience after Willo (ease of use) while borrowing the personalization of Spark Hire.
+
+🚨 Phase 1: Must-Have Features (Core MVP)
+These are non-negotiable for a functional and professional product.
+
+Device-Agnostic Recorder (Mobile Web Support)
+Why: 60%+ of candidates will use phones. Do NOT force them to download an app. Use modern web APIs (MediaRecorder) to record directly in the browser.
+"No-Login" Candidate Flow
+Why: Friction kills completion rates. Assessment links should be unique tokens (e.g., app.com/interview/uuid) that require no password.
+Configurable "Think" & "Record" Times
+Why: Different roles need different constraints.
+Idea: Default to 1 min prep, 2 min answer.
+Playback Speed Controls (1.5x, 2x)
+Why: Recruiters need to scan videos quickly. This is the #1 feature for internal efficiency.
+Branded Landing / Welcome Page
+Why: Displays your company logo and a text/video welcome message to set the context.
+Question Types
+Text-to-Video (Recruiter types Q, Candidate records video).
+Video-to-Video (Recruiter records Q, Candidate records video - High value for personal touch).
+🚀 Phase 2: "Delight" & Power Features (To Stand Out)
+Add these to make the app feel "premium" and better than basic tools.
+
+Practice / Retake Logic
+Allow candidates to do a generic "mic check" question.
+Configurable retakes (e.g., "Allow 3 retakes per question").
+Automated Transcriptions (AI)
+Use OpenAI Whisper API to transcribe answers.
+Benefit: Allows recruiters to "read" interviews or search for keywords without watching 100 videos.
+"Share with Manager" Public Links
+Generate a secret link to a candidate's profile that can be sent to a hiring manager (who doesn't have an account) to view and leave a "Thumbs Up/Down".
+Recruiter Intro Video
+Allow the recruiter to record a 30s "Hello! I'm Janiele, and I'm excited to see your application..." video that plays before the interview starts.
+🔮 Phase 3: Future AI Innovations
+AI Summarization: "Candidate discussed Python experience and staying calm under pressure."
+Keyword Highlighting: Auto-tag "React", "Node.js", "Leadership" in the timeline.
+Technical Implications for MVP
+Storage: Video files get heavy. Use cloud storage (AWS S3 / Google Cloud Storage) with signed upload URLs to upload directly from the browser (bypassing your server to save load).
+Transcoding: Browsers record in different formats (WebM/MP4/MOV). feature a backend job (ffmpeg) to standardize them for universal playback.

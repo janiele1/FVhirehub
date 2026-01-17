@@ -1,0 +1,93 @@
+# One-Way Interview App - SOP & Implementation Plan
+
+## Goal
+Build a professional, internal-use "One-Way Interview" application. The app will allow the user (Admin) to create interview links with specific questions, send them to candidates, and review the recorded video responses.
+
+## Tech Stack
+*   **Frontend Framework**: Next.js 14+ (App Router)
+*   **Styling**: Tailwind CSS + shadcn/ui (for a premium, professional look)
+*   **Backend/Infrastructure**: Supabase (All-in-one Admin, Auth, Database, and Storage)
+*   **Video Handling**: Native MediaRecorder API (client-side recording) + Supabase Storage (upload)
+*   **Hosting**: Vercel (optional, for deployment)
+
+## User Review Required
+> [!IMPORTANT]
+> **Supabase Setup**: You will need a Supabase project. We will mock the setup for local development if credentials are not yet available, but ideally, we should connect to a real instance for storage testing.
+
+## Proposed Features & Architecture
+
+### 1. Database Schema (Supabase)
+*   `users`: Admins/Reviewers.
+*   `interviews`: Defined interview jobs (e.g., "Senior React Dev"). Contains multiple `questions`.
+*   `questions`: Individual questions linked to an interview (text, time limit).
+*   `candidates`: Applicants who enter their details.
+*   `applications`: Links a candidate to an interview.
+*   `videos`: Stores metadata and paths to the recorded videos in Supabase Storage.
+
+### 2. Employer Dashboard (Admin)
+*   **Authentication**: Login for internal team.
+*   **Create Interview**:
+    *   Input: Job Title, Description.
+    *   Add Questions: "Tell us about yourself", "Technical Challenge", etc.
+    *   Settings: Time limit per answer, retakes allowed (y/n).
+*   **Review Candidates**:
+    *   List of completed interviews.
+    *   Detail view: Watch videos per question.
+
+### 3. Candidate Experience (External Facade)
+*   **Landing Page**: "You've been invited to interview for [Job Title]".
+*   **Tech Check**: Browser permission request (Camera/Microphone). Audio visualizer to ensure it works.
+*   **Interview Flow**:
+    1.  Show Question 1.
+    2.  "Start Recording" -> Countdown.
+    3.  Recording active (timer visible).
+    4.  "Stop" -> Preview -> "Submit" or "Retake".
+    5.  Next Question...
+    6.  Completion Screen ("Thank you").
+
+### 4. Technical details
+*   **Video Recording**: Use `react-media-recorder` or native `MediaRecorder` API.
+*   **Storage**: Videos are uploaded directly to Supabase Storage Buckets (`/responses/{interview_id}/{candidate_id}/{question_id}.webm`).
+
+## Development Phases
+
+### Phase 1: Project Setup
+- [ ] Initialize Next.js project.
+- [ ] Install Shadcn/UI and configure theme (Professional/Clean).
+- [ ] Set up Supabase Client.
+
+### Phase 2: Core Skeleton
+- [ ] Create Database Tables.
+- [ ] Build "Create Interview" Form.
+- [ ] Build "Candidate Landing" Page (slug-based routing).
+
+### Phase 3: The Video Recorder
+- [ ] Implement Camera/Mic access features.
+- [ ] Build the Recording interface (Start/Stop/Preview).
+- [ ] Implement robust upload logic (Progress bars, error handling).
+
+### Phase 4: Review Dashboard
+- [ ] Build Player interface to watch candidate responses.
+
+## Verification Plan
+
+### Automated Tests
+*   We will largely rely on manual verification for this MVP as it relies heavily on hardware APIs (Camera/Mic) which are hard to mock in standard CI/CD without headless browsers.
+
+### Manual Verification
+1.  **Environment**: Localhost (Chrome/Safari).
+2.  **Admin Flow**:
+    *   Go to `/admin`.
+    *   Create a new Interview "Test Role".
+    *   Add 2 questions.
+    *   Copy the generated link.
+3.  **Candidate Flow**:
+    *   Open link.
+    *   Grant Permissions.
+    *   Record Answer 1 (Speak for 5s).
+    *   Record Answer 2 (Speak for 5s).
+    *   Submit.
+4.  **Review Flow**:
+    *   Go back to `/admin`.
+    *   See "1 New Applicant".
+    *   Watch both videos. Verify audio/video sync and quality.

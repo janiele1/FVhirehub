@@ -1,0 +1,23 @@
+# One-Way Interview App Task List
+
+- [x] Research and Planning
+  - [x] Research competitor features (Willow Talent, etc.)
+  - [x] Define feature set and user flow
+  - [x] Create Implementation Plan / SOP
+  - [x] Review plan with user
+- [/] Project Setup
+  - [x] Initialize Next.js project
+  - [x] Setup Tailwind CSS and shadcn/ui (or similar)
+  - [x] Setup Database (PostgreSQL/Supabase or similar)
+  - [x] Setup Storage for Videos (AWS S3/R2 or similar)
+- [/] Core Features Implementation
+  - [x] Employer Dashboard (Create jobs, questions)
+  - [/] Candidate Interface (Landing page, video recording)
+  - [ ] Video Upload & Storage logic
+  - [ ] Review Interface (Watch videos)
+- [ ] Polish and UI/UX
+  - [ ] Ensure "Wow" factor design
+  - [ ] Responsive design checks
+- [ ] Verification
+  - [ ] Test recording flow on different devices
+  - [ ] Verify upload perristence
