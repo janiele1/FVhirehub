@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
+// import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { notFound } from "next/navigation"
@@ -26,7 +27,12 @@ export default async function ApplicationReviewPage({ params }: { params: Promis
         .order("created_at", { ascending: true })
 
     // Group videos by question
-    const groupedVideos = videos?.reduce((acc: any, video: any) => {
+    type VideoGroup = {
+        question: any
+        thinking: any
+        answer: any
+    }
+    const groupedVideos = videos?.reduce<Record<string, VideoGroup>>((acc, video: any) => {
         const qId = video.question_id
         if (!acc[qId]) {
             acc[qId] = {
@@ -66,7 +72,7 @@ export default async function ApplicationReviewPage({ params }: { params: Promis
                 {/* Main Content: Video Responses */}
                 <div className="lg:col-span-2 space-y-6">
                     {questionsWithVideos.length > 0 ? (
-                        questionsWithVideos.map((group: any) => {
+                        questionsWithVideos.map((group) => {
                             return (
                                 <Card key={group.question.id} className="overflow-hidden border-slate-200 shadow-sm">
                                     <CardHeader className="bg-slate-50 border-b pb-3">

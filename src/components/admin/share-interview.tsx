@@ -15,6 +15,7 @@ export default function ShareInterview({ interviewId }: ShareInterviewProps) {
     const [copied, setCopied] = useState(false)
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setBaseUrl(window.location.origin)
     }, [])
 

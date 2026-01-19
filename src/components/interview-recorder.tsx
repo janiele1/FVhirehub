@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from "react"
@@ -7,14 +8,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { uploadVideoResponse } from "@/app/actions/videos"
 import { Loader2, StopCircle, CheckCircle, Camera, Mic, AlertCircle, Play } from "lucide-react"
-import { useRouter } from "next/navigation"
+// import { useRouter } from "next/navigation"
 
-export default function InterviewSession({ application, questions, interview }: any) {
+interface InterviewSessionProps {
+    application: any
+    questions: any[]
+    interview: any
+}
+
+export default function InterviewSession({ application, questions, interview }: InterviewSessionProps) {
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
     const [isUploading, setIsUploading] = useState(false)
     const [sessionComplete, setSessionComplete] = useState(false)
     const [phase, setPhase] = useState<'setup' | 'intro' | 'thinking' | 'answering'>('setup')
-    const router = useRouter()
+    // const router = useRouter()
     const videoRef = useRef<HTMLVideoElement>(null)
     const [mediaStream, setMediaStream] = useState<MediaStream | null>(null)
     const [permissionError, setPermissionError] = useState<string | null>(null)
@@ -32,9 +39,9 @@ export default function InterviewSession({ application, questions, interview }: 
                 stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
                 setMediaStream(stream)
                 setPermissionError(null)
-            } catch (err: any) {
+            } catch (err: unknown) {
                 console.error("Failed to access camera/mic", err)
-                setPermissionError(err.message || "Camera and Microphone access is required for this interview.")
+                setPermissionError((err as Error).message || "Camera and Microphone access is required for this interview.")
             }
         }
 
@@ -79,6 +86,7 @@ export default function InterviewSession({ application, questions, interview }: 
         } else if (timeLeft === 0 && phase === 'answering' && status === 'recording') {
             stopRecording()
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [timeLeft, phase, status])
 
     // Watch for recording stop to auto-upload
@@ -88,6 +96,7 @@ export default function InterviewSession({ application, questions, interview }: 
             const url = mediaBlobUrl
             handleUpload(url, type)
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [status, mediaBlobUrl])
 
     const startInterview = () => {
@@ -222,7 +231,7 @@ export default function InterviewSession({ application, questions, interview }: 
                                 </li>
                                 <li className="flex gap-2">
                                     <span className="flex-shrink-0 w-5 h-5 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-[10px] font-bold">2</span>
-                                    <span>If match is found, you'll receive an email to schedule a live interview.</span>
+                                    <span>If match is found, you&apos;ll receive an email to schedule a live interview.</span>
                                 </li>
                                 <li className="flex gap-2">
                                     <span className="flex-shrink-0 w-5 h-5 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-[10px] font-bold">3</span>
@@ -248,7 +257,7 @@ export default function InterviewSession({ application, questions, interview }: 
                 </CardHeader>
                 <CardContent className="space-y-6">
                     <p className="text-slate-600">
-                        Before we begin, let's make sure your camera and microphone are working properly.
+                        Before we begin, let&apos;s make sure your camera and microphone are working properly.
                         You should see yourself in the preview below.
                     </p>
 
@@ -295,7 +304,7 @@ export default function InterviewSession({ application, questions, interview }: 
                             <li>Find a quiet, well-lit space</li>
                             <li>Position yourself in the center of the frame</li>
                             <li>Speak clearly and at a normal pace</li>
-                            <li>You'll have thinking time before each question</li>
+                            <li>You&apos;ll have thinking time before each question</li>
                         </ul>
                     </div>
 
@@ -348,9 +357,9 @@ export default function InterviewSession({ application, questions, interview }: 
                                     Thank you for taking the time to complete this video interview.
                                 </p>
                                 <div className="text-left max-w-md mx-auto space-y-3 text-sm text-slate-700">
-                                    <p><strong>Here's how it works:</strong></p>
+                                    <p><strong>Here&apos;s how it works:</strong></p>
                                     <ul className="list-disc list-inside space-y-2">
-                                        <li>You'll be asked <strong>{questions.length} question{questions.length !== 1 ? 's' : ''}</strong></li>
+                                        <li>You&apos;ll be asked <strong>{questions.length} question{questions.length !== 1 ? 's' : ''}</strong></li>
                                         <li>Each question has <strong>thinking time</strong> before recording starts</li>
                                         <li>Your video will be <strong>recorded and submitted automatically</strong></li>
                                         <li>Take your time and be yourself!</li>

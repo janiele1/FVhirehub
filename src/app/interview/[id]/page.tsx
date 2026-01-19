@@ -42,7 +42,7 @@ export default async function InterviewLandingPage({ params }: { params: Promise
                             <CheckCircle2 className="h-6 w-6 text-green-500 mt-1" />
                             <div>
                                 <h3 className="font-medium text-slate-900">{questionCount} Questions</h3>
-                                <p className="text-sm text-slate-500">You'll answer a series of video questions.</p>
+                                <p className="text-sm text-slate-500">You&apos;ll answer a series of video questions.</p>
                             </div>
                         </div>
                         <div className="flex items-start gap-3">

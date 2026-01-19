@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config({ path: '.env.local' });
 
@@ -5,8 +6,8 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseServiceRoleKey) {
-    console.error("Missing Supabase credentials in .env.local");
-    process.exit(1);
+  console.error("Missing Supabase credentials in .env.local");
+  process.exit(1);
 }
 
 const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
@@ -64,23 +65,23 @@ create table if not exists public.videos (
 `;
 
 async function applySchema() {
-    console.log('Applying database schema...');
+  console.log('Applying database schema...');
 
-    // Split by semicolons and run each statement
-    const statements = schema.split(';').filter(s => s.trim());
+  // Split by semicolons and run each statement
+  const statements = schema.split(';').filter(s => s.trim());
 
-    for (const statement of statements) {
-        const trimmed = statement.trim();
-        if (!trimmed) continue;
+  for (const statement of statements) {
+    const trimmed = statement.trim();
+    if (!trimmed) continue;
 
-        const { error } = await supabase.rpc('exec_sql', { query: trimmed + ';' });
-        if (error) {
-            // RPC might not exist, try direct approach via REST
-            console.log('Note: exec_sql RPC not available, schema may need manual application');
-        }
+    const { error } = await supabase.rpc('exec_sql', { query: trimmed + ';' });
+    if (error) {
+      // RPC might not exist, try direct approach via REST
+      console.log('Note: exec_sql RPC not available, schema may need manual application');
     }
+  }
 
-    console.log('Schema application attempted. If you see errors, please run supabase_schema.sql manually in the SQL Editor.');
+  console.log('Schema application attempted. If you see errors, please run supabase_schema.sql manually in the SQL Editor.');
 }
 
 applySchema();

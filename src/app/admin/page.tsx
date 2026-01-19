@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { PlusCircle, Video } from "lucide-react"
+import { PlusCircle } from "lucide-react"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { DeleteInterviewButton } from "@/components/admin/delete-interview-button"
 
@@ -28,7 +28,7 @@ export default async function AdminDashboard() {
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {interviews && interviews.length > 0 ? (
-                    interviews.map((interview: any) => (
+                    interviews.map((interview: { id: string; title: string; description: string; created_at: string }) => (
                         <Card key={interview.id} className="hover:shadow-md transition-shadow">
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-lg font-medium">{interview.title}</CardTitle>

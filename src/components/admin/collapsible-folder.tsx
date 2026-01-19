@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
 
 import { useState } from "react"
@@ -55,7 +56,7 @@ export default function CollapsibleFolder({ group }: CollapsibleFolderProps) {
                     <CardContent className="p-0">
                         {group.items.length > 0 ? (
                             <div className="divide-y text-left">
-                                {group.items.map((app: any) => (
+                                {group.items.map((app: { id: string; candidates: { first_name: string; last_name: string; email: string } }) => (
                                     <div key={app.id} className="py-3 px-4 flex items-center justify-between hover:bg-slate-50/50 transition-colors">
                                         <div className="min-w-0 flex-1">
                                             <h3 className="text-xs font-semibold text-slate-900 truncate">

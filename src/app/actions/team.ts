@@ -2,7 +2,7 @@
 
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { revalidatePath } from "next/cache"
-import { randomBytes } from "crypto"
+// import { randomBytes } from "crypto"
 
 export async function createAdminUser(formData: FormData) {
     const email = formData.get("email") as string
@@ -12,7 +12,7 @@ export async function createAdminUser(formData: FormData) {
         return { error: "Email and password are required" }
     }
 
-    const { data, error } = await supabaseAdmin.auth.admin.createUser({
+    const { error } = await supabaseAdmin.auth.admin.createUser({
         email,
         password,
         email_confirm: true
