@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { PlusCircle, Video } from "lucide-react"
 import { supabaseAdmin } from "@/lib/supabase-admin"
+import { DeleteInterviewButton } from "@/components/admin/delete-interview-button"
 
 export default async function AdminDashboard() {
     const { data: interviews } = await supabaseAdmin
@@ -45,6 +46,7 @@ export default async function AdminDashboard() {
                                         <Link href={`/admin/interviews/${interview.id}`}>
                                             <Button variant="outline" size="sm">Manage</Button>
                                         </Link>
+                                        <DeleteInterviewButton id={interview.id} title={interview.title} />
                                     </div>
                                 </div>
                             </CardContent>

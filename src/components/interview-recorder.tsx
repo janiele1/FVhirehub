@@ -123,9 +123,16 @@ export default function InterviewSession({ application, questions, interview }: 
         stopRecording()
     }
 
-    const handleNextQuestion = () => {
+    const handleNextQuestion = async () => {
         if (isLastQuestion) {
             setSessionComplete(true)
+            // Trigger server action to finalize submission and send email
+            try {
+                const { finishInterview } = await import("@/app/actions/applications")
+                await finishInterview(application.id)
+            } catch (err) {
+                console.error("Failed to finish interview:", err)
+            }
         } else {
             setCurrentQuestionIndex((prev) => prev + 1)
             setPhase('thinking')

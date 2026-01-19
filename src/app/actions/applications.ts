@@ -3,6 +3,36 @@
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
+import { sendSubmissionEmail } from "@/lib/email"
+
+export async function finishInterview(applicationId: string) {
+    // 1. Update status to submitted
+    await updateApplicationStatus(applicationId, 'submitted')
+
+    // 2. Fetch details for email
+    const { data: app } = await supabaseAdmin
+        .from('applications')
+        .select('*, candidates(*), interviews(*)')
+        .eq('id', applicationId)
+        .single()
+
+    if (app && app.candidates && app.interviews) {
+        const candidateName = `${app.candidates.first_name} ${app.candidates.last_name}`
+        const interviewTitle = app.interviews.title
+
+        // 3. Fetch all admin users
+        const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers()
+
+        if (!error && users) {
+            const recipients = users.map(u => u.email).filter(Boolean) as string[]
+
+            if (recipients.length > 0) {
+                console.log(`Sending email for application ${applicationId} to ${recipients.length} recipients...`)
+                await sendSubmissionEmail(candidateName, interviewTitle, applicationId, recipients)
+            }
+        }
+    }
+}
 
 export async function startApplication(formData: FormData) {
     const interviewId = formData.get("interviewId") as string
