@@ -44,16 +44,6 @@ Video-to-Video (Recruiter records Q, Candidate records video - High value for pe
 🚀 Phase 2: "Delight" & Power Features (To Stand Out)
 Add these to make the app feel "premium" and better than basic tools.
 
-Practice / Retake Logic
-Allow candidates to do a generic "mic check" question.
-Configurable retakes (e.g., "Allow 3 retakes per question").
-Automated Transcriptions (AI)
-Use OpenAI Whisper API to transcribe answers.
-Benefit: Allows recruiters to "read" interviews or search for keywords without watching 100 videos.
-"Share with Manager" Public Links
-Generate a secret link to a candidate's profile that can be sent to a hiring manager (who doesn't have an account) to view and leave a "Thumbs Up/Down".
-Recruiter Intro Video
-Allow the recruiter to record a 30s "Hello! I'm Janiele, and I'm excited to see your application..." video that plays before the interview starts.
 🔮 Phase 3: Future AI Innovations
 AI Summarization: "Candidate discussed Python experience and staying calm under pressure."
 Keyword Highlighting: Auto-tag "React", "Node.js", "Leadership" in the timeline.

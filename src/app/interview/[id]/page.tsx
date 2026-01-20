@@ -23,13 +23,22 @@ export default async function InterviewLandingPage({ params }: { params: Promise
 
     return (
         <div className="space-y-8">
-            <div className="text-center space-y-4">
-                <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 lg:text-5xl">
+            <div className="space-y-8 max-w-3xl mx-auto">
+                <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 lg:text-5xl text-center">
                     {interview.title}
                 </h1>
-                <p className="text-xl text-slate-600 max-w-2xl mx-auto">
-                    {interview.description}
-                </p>
+
+                {interview.description && (
+                    <div className="text-lg text-slate-600 leading-relaxed text-left space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                        {interview.description.split('\n').map((paragraph: string, i: number) => (
+                            paragraph.trim() && (
+                                <p key={i}>
+                                    {paragraph}
+                                </p>
+                            )
+                        ))}
+                    </div>
+                )}
             </div>
 
             <Card className="border-t-4 border-t-blue-600 shadow-lg">
@@ -62,8 +71,8 @@ export default async function InterviewLandingPage({ params }: { params: Promise
                         <div className="flex items-start gap-3">
                             <CheckCircle2 className="h-6 w-6 text-green-500 mt-1" />
                             <div>
-                                <h3 className="font-medium text-slate-900">Take your time</h3>
-                                <p className="text-sm text-slate-500">You can retake your answers before submitting.</p>
+                                <h3 className="font-medium text-slate-900">One chance only</h3>
+                                <p className="text-sm text-slate-500">You cannot retake your answers once submitted.</p>
                             </div>
                         </div>
                     </div>

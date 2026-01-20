@@ -6,8 +6,8 @@ import { useReactMediaRecorder } from "react-media-recorder"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { uploadVideoResponse } from "@/app/actions/videos"
-import { Loader2, StopCircle, CheckCircle, Camera, Mic, AlertCircle, Play } from "lucide-react"
+import { Loader2, StopCircle, CheckCircle, Camera, Mic, AlertCircle } from "lucide-react"
+
 // import { useRouter } from "next/navigation"
 
 interface InterviewSessionProps {
@@ -36,7 +36,14 @@ export default function InterviewSession({ application, questions, interview }: 
 
         async function enableStream() {
             try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { max: 640, ideal: 640 },
+                        height: { max: 480, ideal: 480 },
+                        frameRate: { max: 15, ideal: 15 }
+                    },
+                    audio: true
+                })
                 setMediaStream(stream)
                 setPermissionError(null)
             } catch (err: unknown) {
@@ -71,25 +78,28 @@ export default function InterviewSession({ application, questions, interview }: 
             video: true,
             audio: true,
             blobPropertyBag: { type: "video/webm" },
-            customMediaStream: mediaStream || undefined
+            customMediaStream: mediaStream || undefined,
+            // @ts-expect-error - videoBitsPerSecond is supported by the underlying MediaRecorder
+            videoBitsPerSecond: 128000 // 128 kbps - Aggressive compression for speed
         })
 
     const recordingType = useRef<'thinking' | 'answer'>('thinking')
 
-    // Timer logic
+    // Warn before closing tab if uploading
     useEffect(() => {
-        if (timeLeft > 0) {
-            const timer = setInterval(() => setTimeLeft((prev) => prev - 1), 1000)
-            return () => clearInterval(timer)
-        } else if (timeLeft === 0 && phase === 'thinking') {
-            startAnswer()
-        } else if (timeLeft === 0 && phase === 'answering' && status === 'recording') {
-            stopRecording()
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (isUploading) {
+                e.preventDefault()
+                e.returnValue = ''
+            }
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [timeLeft, phase, status])
+        window.addEventListener('beforeunload', handleBeforeUnload)
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+    }, [isUploading])
 
-    // Watch for recording stop to auto-upload
+    // Watch for recording stop to trigger upload behavior
+    // For 'thinking' -> auto upload in background (or skip if we don't care about thinking videos success as much? usually we do)
+    // For 'answer' -> triggering handleUpload which will block UI
     useEffect(() => {
         if (status === 'stopped' && mediaBlobUrl) {
             const type = recordingType.current
@@ -100,7 +110,6 @@ export default function InterviewSession({ application, questions, interview }: 
     }, [status, mediaBlobUrl])
 
     const startInterview = () => {
-        // Always show intro phase first
         setPhase('intro')
     }
 
@@ -114,13 +123,12 @@ export default function InterviewSession({ application, questions, interview }: 
     const startAnswer = useCallback(() => {
         if (phase === 'thinking') {
             recordingType.current = 'thinking'
-            stopRecording()
-            // Setting state for next phase
+            stopRecording() // This triggers upload for thinking video
+
             setPhase('answering')
             setTimeLeft(currentQuestion?.time_limit_seconds || 60)
-            // We'll start recording the answer after the thinking recording stops
-            // Actually, for better UX, we should start it as close as possible.
-            // Let's use a small timeout to let the recorder reset.
+
+            // Small delay to ensure recorder resets
             setTimeout(() => {
                 recordingType.current = 'answer'
                 startRecording()
@@ -129,13 +137,26 @@ export default function InterviewSession({ application, questions, interview }: 
     }, [currentQuestion, phase, stopRecording, startRecording])
 
     const handleStopRecording = () => {
+        // Just stop. The effect will catch it and call handleUpload.
         stopRecording()
     }
+
+    // Timer logic
+    useEffect(() => {
+        if (timeLeft > 0) {
+            const timer = setInterval(() => setTimeLeft((prev) => prev - 1), 1000)
+            return () => clearInterval(timer)
+        } else if (timeLeft === 0 && phase === 'thinking') {
+            startAnswer()
+        } else if (timeLeft === 0 && phase === 'answering' && status === 'recording') {
+            handleStopRecording()
+        }
+    }, [timeLeft, phase, status, startAnswer]) // Removed handleStopRecording from deps
 
     const handleNextQuestion = async () => {
         if (isLastQuestion) {
             setSessionComplete(true)
-            // Trigger server action to finalize submission and send email
+            // Trigger server action to finalize submission
             try {
                 const { finishInterview } = await import("@/app/actions/applications")
                 await finishInterview(application.id)
@@ -148,13 +169,14 @@ export default function InterviewSession({ application, questions, interview }: 
             const nextQuestion = questions[currentQuestionIndex + 1]
             setTimeLeft(nextQuestion?.thinking_time_seconds || 30)
 
-            // Fix: Start recording for the next question's thinking phase
             recordingType.current = 'thinking'
             setTimeout(() => {
                 startRecording()
             }, 250)
         }
     }
+
+    const [uploadProgress, setUploadProgress] = useState(0)
 
     const handleUpload = async (blobUrl: string, type: 'thinking' | 'answer') => {
         if (!blobUrl) return
@@ -168,36 +190,61 @@ export default function InterviewSession({ application, questions, interview }: 
             return
         }
 
-        setIsUploading(true)
+        // For answers, we show the blocking loading state
+        if (type === 'answer') {
+            setIsUploading(true)
+            setUploadProgress(0)
+        }
+
         try {
             const blob = await fetch(blobUrl).then((r) => r.blob())
+            if (blob.size <= 0) throw new Error("Video is empty. Please refresh and try again.")
 
-            const formData = new FormData()
-            formData.append('applicationId', application.id)
-            formData.append('questionId', currentQuestion.id)
-            formData.append('video', blob, `${type}.webm`)
-            formData.append('videoType', type)
+            const fileName = `${application.id}/${currentQuestion.id}_${type}.webm`
 
-            // Calculate duration based on phase
+            const { createClient } = await import('@/lib/supabase-client')
+            const { saveVideoMetadata } = await import('@/app/actions/save-video-metadata')
+            const supabase = createClient()
+
+            // 1. UPLOAD
+            const { error: uploadError } = await supabase.storage
+                .from('videos')
+                .upload(fileName, blob, {
+                    upsert: true,
+                    contentType: 'video/webm'
+                })
+
+            if (uploadError) throw uploadError
+
+            // 2. METADATA
             const duration = type === 'thinking'
                 ? (currentQuestion.thinking_time_seconds - timeLeft)
                 : (currentQuestion.time_limit_seconds - timeLeft)
 
-            formData.append('duration', String(Math.max(0, duration)))
+            const result = await saveVideoMetadata(
+                application.id,
+                currentQuestion.id,
+                fileName,
+                Math.max(0, duration),
+                type
+            )
 
-            await uploadVideoResponse(formData)
+            if (!result.success) throw new Error(result.error)
 
-            setIsUploading(false)
+            // Success!
             if (type === 'answer') {
+                clearBlobUrl()
+                // Proceed to next question ONLY after successful upload
                 handleNextQuestion()
             }
 
-        } catch (error) {
-            console.error("Upload failed", error)
-            alert("Failed to upload video. Please try again.")
-            setIsUploading(false)
+        } catch (error: any) {
+            console.error("Upload failed:", error)
+            alert(`Failed to upload: ${error?.message || "Unknown error"}. Please try again.`)
         } finally {
-            clearBlobUrl()
+            if (type === 'answer') {
+                setIsUploading(false)
+            }
         }
     }
 
@@ -211,7 +258,10 @@ export default function InterviewSession({ application, questions, interview }: 
                         <div className="bg-green-100 p-4 rounded-full">
                             <CheckCircle className="h-16 w-16 text-green-600 animate-in zoom-in duration-500" />
                         </div>
-                        <h2 className="text-4xl font-extrabold text-slate-900 tracking-tight">Interview Submitted!</h2>
+
+                        <h2 className="text-4xl font-extrabold text-slate-900 tracking-tight">
+                            Interview Submitted!
+                        </h2>
                     </div>
 
                     <div className="max-w-md mx-auto space-y-6">
@@ -325,13 +375,7 @@ export default function InterviewSession({ application, questions, interview }: 
     if (phase === 'intro') {
         return (
             <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Play className="h-5 w-5" />
-                        Welcome to the Interview
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
+                <CardContent className="space-y-6 pt-6">
                     {interview.recruiter_intro_video_path ? (
                         <div className="space-y-4">
                             <p className="text-slate-600">Please watch this introduction from our team:</p>
@@ -343,26 +387,42 @@ export default function InterviewSession({ application, questions, interview }: 
                             />
                         </div>
                     ) : (
-                        <div className="space-y-4">
-                            <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-lg p-8 text-center">
-                                <h3 className="text-xl font-bold text-slate-800 mb-4">
-                                    Welcome to {interview.title}!
-                                </h3>
+                        <div className="space-y-6">
+                            <div className="bg-gradient-to-br from-slate-50 to-blue-50/50 rounded-2xl border border-slate-100 p-8 shadow-sm">
+
+
                                 {interview.description && (
-                                    <p className="text-slate-700 mb-4 text-base">
-                                        {interview.description}
-                                    </p>
+                                    <div className="prose prose-slate max-w-none text-slate-600 leading-relaxed space-y-4">
+                                        {interview.description.split('\n').map((paragraph: string, i: number) => (
+                                            <p key={i} className="text-base md:text-lg">
+                                                {paragraph}
+                                            </p>
+                                        ))}
+                                    </div>
                                 )}
-                                <p className="text-slate-600 mb-4">
-                                    Thank you for taking the time to complete this video interview.
-                                </p>
-                                <div className="text-left max-w-md mx-auto space-y-3 text-sm text-slate-700">
-                                    <p><strong>Here&apos;s how it works:</strong></p>
-                                    <ul className="list-disc list-inside space-y-2">
-                                        <li>You&apos;ll be asked <strong>{questions.length} question{questions.length !== 1 ? 's' : ''}</strong></li>
-                                        <li>Each question has <strong>thinking time</strong> before recording starts</li>
-                                        <li>Your video will be <strong>recorded and submitted automatically</strong></li>
-                                        <li>Take your time and be yourself!</li>
+
+                                <div className="mt-8 pt-6 border-t border-slate-200">
+                                    <h4 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                                        <AlertCircle className="h-4 w-4 text-blue-500" />
+                                        Interview Process
+                                    </h4>
+                                    <ul className="grid gap-3 sm:grid-cols-2">
+                                        <li className="flex items-center gap-3 bg-white p-3 rounded-lg border border-slate-100 shadow-sm">
+                                            <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-xs font-bold">1</span>
+                                            <span className="text-sm text-slate-600">{questions.length} Question{questions.length !== 1 ? 's' : ''}</span>
+                                        </li>
+                                        <li className="flex items-center gap-3 bg-white p-3 rounded-lg border border-slate-100 shadow-sm">
+                                            <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                                            <span className="text-sm text-slate-600">Thinking time included</span>
+                                        </li>
+                                        <li className="flex items-center gap-3 bg-white p-3 rounded-lg border border-slate-100 shadow-sm">
+                                            <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-xs font-bold">3</span>
+                                            <span className="text-sm text-slate-600">Auto-submit</span>
+                                        </li>
+                                        <li className="flex items-center gap-3 bg-white p-3 rounded-lg border border-slate-100 shadow-sm">
+                                            <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-xs font-bold">4</span>
+                                            <span className="text-sm text-slate-600">One-way video</span>
+                                        </li>
                                     </ul>
                                 </div>
                             </div>
@@ -384,7 +444,8 @@ export default function InterviewSession({ application, questions, interview }: 
                 <div className="flex justify-between text-sm text-slate-500">
                     <span>Question {currentQuestionIndex + 1} of {questions.length}</span>
                     {phase === 'thinking' && <span className="text-blue-600 font-medium">Thinking Time...</span>}
-                    {phase === 'answering' && <span className="text-red-500 font-medium font-mono animate-pulse">● Recording</span>}
+                    {phase === 'answering' && status === 'recording' && <span className="text-red-500 font-medium font-mono animate-pulse">● Recording</span>}
+                    {phase === 'answering' && status !== 'recording' && <span className="text-amber-600 font-medium">● Submit Video</span>}
                 </div>
                 <Progress value={((currentQuestionIndex) / questions.length) * 100} />
             </div>
@@ -406,6 +467,19 @@ export default function InterviewSession({ application, questions, interview }: 
                             {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
                         </div>
 
+                        {isUploading && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-20">
+                                <div className="text-white flex flex-col items-center">
+                                    <Loader2 className="h-12 w-12 animate-spin mb-4" />
+                                    <p>
+                                        Optimizing & Uploading...
+                                        <span className="text-yellow-400 font-bold ml-1">Do not close!</span>
+                                    </p>
+                                    <p className="text-xs text-slate-400 mt-2">Almost there...</p>
+                                </div>
+                            </div>
+                        )}
+
                         {phase === 'thinking' && (
                             <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
                                 <div className="text-center text-white p-6 bg-black/50 rounded-xl backdrop-blur-sm pointer-events-auto">
@@ -416,14 +490,7 @@ export default function InterviewSession({ application, questions, interview }: 
                             </div>
                         )}
 
-                        {isUploading && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-20">
-                                <div className="text-white flex flex-col items-center">
-                                    <Loader2 className="h-12 w-12 animate-spin mb-4" />
-                                    <p>Uploading response...</p>
-                                </div>
-                            </div>
-                        )}
+
 
                         <video
                             ref={videoRef}
@@ -434,15 +501,31 @@ export default function InterviewSession({ application, questions, interview }: 
                         />
                     </div>
 
+
                     {phase === 'answering' && (
                         <Button
                             onClick={handleStopRecording}
-                            variant="destructive"
+                            variant={status === 'recording' ? "destructive" : "default"}
                             size="lg"
                             className="w-full"
+                            disabled={isUploading}
                         >
-                            <StopCircle className="mr-2 h-4 w-4" />
-                            {isLastQuestion ? 'Finish Interview' : 'Next Question'}
+                            {status === 'recording' ? (
+                                <>
+                                    <StopCircle className="mr-2 h-4 w-4" />
+                                    {isLastQuestion ? 'Finish' : 'Next Question'}
+                                </>
+                            ) : isUploading ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Uploading...
+                                </>
+                            ) : (
+                                <>
+                                    {/* Normal state */}
+                                    {isLastQuestion ? 'Finish Interview' : 'Next Question'}
+                                </>
+                            )}
                         </Button>
                     )}
 
