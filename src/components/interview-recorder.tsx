@@ -79,8 +79,10 @@ export default function InterviewSession({ application, questions, interview }: 
             audio: true,
             blobPropertyBag: { type: "video/webm" },
             customMediaStream: mediaStream || undefined,
-            // @ts-expect-error - videoBitsPerSecond is supported by the underlying MediaRecorder
-            videoBitsPerSecond: 128000 // 128 kbps - Aggressive compression for speed
+            mediaRecorderOptions: {
+                mimeType: 'video/webm;codecs=vp8', // VP8 is widely supported and good for web
+                videoBitsPerSecond: 250000 // 250 Kbps - Target ~7.5MB for 4 mins
+            }
         })
 
     const recordingType = useRef<'thinking' | 'answer'>('thinking')
@@ -136,10 +138,10 @@ export default function InterviewSession({ application, questions, interview }: 
         }
     }, [currentQuestion, phase, stopRecording, startRecording])
 
-    const handleStopRecording = () => {
+    const handleStopRecording = useCallback(() => {
         // Just stop. The effect will catch it and call handleUpload.
         stopRecording()
-    }
+    }, [stopRecording])
 
     // Timer logic
     useEffect(() => {
@@ -151,7 +153,7 @@ export default function InterviewSession({ application, questions, interview }: 
         } else if (timeLeft === 0 && phase === 'answering' && status === 'recording') {
             handleStopRecording()
         }
-    }, [timeLeft, phase, status, startAnswer]) // Removed handleStopRecording from deps
+    }, [timeLeft, phase, status, startAnswer, handleStopRecording])
 
     const handleNextQuestion = async () => {
         if (isLastQuestion) {
@@ -176,7 +178,7 @@ export default function InterviewSession({ application, questions, interview }: 
         }
     }
 
-    const [uploadProgress, setUploadProgress] = useState(0)
+
 
     const handleUpload = async (blobUrl: string, type: 'thinking' | 'answer') => {
         if (!blobUrl) return
@@ -193,12 +195,19 @@ export default function InterviewSession({ application, questions, interview }: 
         // For answers, we show the blocking loading state
         if (type === 'answer') {
             setIsUploading(true)
-            setUploadProgress(0)
         }
 
         try {
             const blob = await fetch(blobUrl).then((r) => r.blob())
             if (blob.size <= 0) throw new Error("Video is empty. Please refresh and try again.")
+
+            // Log size for debugging
+            const sizeInMB = blob.size / (1024 * 1024)
+            console.log(`[Upload] Video size: ${sizeInMB.toFixed(2)} MB`)
+
+            if (sizeInMB > 48) {
+                throw new Error(`Video is too large (${sizeInMB.toFixed(2)}MB). Max size is 50MB. Please try to keep your answer shorter.`)
+            }
 
             const fileName = `${application.id}/${currentQuestion.id}_${type}.webm`
 
